@@ -254,7 +254,8 @@ class Sampler(nn.Module):
                     sampling_tensors.dry_multipliers,
                     sampling_tensors.dry_bases, 
                     sampling_tensors.dry_allowed_lengths,
-                    sampling_tensors.dry_sequence_breaker_ids)
+                    sampling_tensors.dry_sequence_breaker_ids,
+                    sampling_tensors.dry_ranges)
 
             elif sampler_id == SamplerID.PENALTIES and do_penalties:
                 if (sampling_metadata.seq_groups and
@@ -622,7 +623,8 @@ def _apply_dry(
     multipliers: torch.Tensor, 
     bases: torch.Tensor,
     allowed_lengths: torch.Tensor,
-    sequence_breakers_ids: torch.Tensor
+    sequence_breakers_ids: torch.Tensor,
+    _ranges: torch.Tensor
 ) -> torch.Tensor:
     """
     Apply Don't Repeat Yourself (DRY) sampling to the logits.
@@ -642,6 +644,9 @@ def _apply_dry(
         multiplier = multipliers[i].item()
         if multiplier == 0:
             continue  # Skip processing for this sequence
+        # Apply DRY on the corresponding dry_range only 
+        if _ranges[i] > 0:    
+            input_ids_row = input_ids_row[-_ranges[i]:]
         # Get the last token
         last_token = input_ids_row[-1].item()
 
