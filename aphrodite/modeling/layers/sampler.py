@@ -647,48 +647,53 @@ def _apply_dry(
         # Apply DRY on the corresponding dry_range only 
         if _ranges[i] > 0:    
             input_ids_row = input_ids_row[-_ranges[i]:]
+
+        # Use normal Python data types for improved performance
+        # see https://github.com/belladoreai/text-generation-webui/blob/b556ee28001a71c7f473870303f84fe3b2bdd2ec/modules/sampler_hijack.py#L206
+        input_ids = input_ids_row.tolist()
+        
         # Get the last token
-        last_token = input_ids_row[-1].item()
+        last_token = input_ids[-1]
 
         # Skip if last token is a sequence breaker
         if last_token in sequence_breakers_ids[i]:
             continue
 
         # Find matches of the last token, excluding the last position
-        match_indices = (input_ids_row[:-1] == last_token).nonzero()
+        match_indices = []
+        for idx, val in enumerate(input_ids[:-1]):
+            if val == last_token:
+                match_indices.append(idx)
 
-        # Track max matching sequence length for each potential next token
+        # Stores the maximum matching sequence length
+        # for each token immediately following the sequence in the input.
         match_lengths = {}
 
         # Process each match
-        for idx in match_indices:
-            # Convert to scalar
-            idx = idx.item()
-            
+        for i in match_indices:
             # Get the token that followed this match in the input
-            next_token = input_ids_row[idx + 1].item()
+            next_token = input_ids[i + 1]
 
             # Skip if next token is a sequence breaker or out of vocab range
-            if next_token in sequence_breakers_ids or next_token >= vocab_size:
+            if next_token in sequence_breakers_ids[i] or next_token >= vocab_size:
                 continue
 
-            # We found last_token matches at this index, so match length starts
-            # at 1
+            # We have already found that `last_token` matches at this index,
+            # so the match is at least of length 1.
             match_length = 1
 
-            # Try to extend match backwards
+            # Extend the match backwards (at most to 50 to prevent exponent overflow at penalty calculation) (this cap also improves performance on worst case)
             while match_length < 50:
-                j = idx - match_length
-                k = len(input_ids_row) - match_length - 1
-                if j < 0 or k < 0:
+                j = i - match_length
+                if j < 0:
                     # Reached start of input
                     break
-
-                if input_ids_row[j].item() != input_ids_row[k].item():
+                previous_token = input_ids[-(match_length + 1)]
+                if input_ids[j]!= previous_token:
                     # No more matches
                     break
 
-                if input_ids_row[k].item() in sequence_breakers_ids:
+                if previous_token in sequence_breakers_ids[i]:
                     # Hit a sequence breaker
                     break
 
