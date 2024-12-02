@@ -155,7 +155,7 @@ class ChatCompletionRequest(OpenAIBaseModel):
     dry_allowed_length: Optional[int] = 2
     dry_sequence_breakers: Optional[List[str]] = Field(
         default=["\n", ":", "\"", "*"])
-    dry_range: Optional[int] = 1024
+    dry_range: Optional[int] = 0
     dynatemp_min: Optional[float] = 0.0
     dynatemp_max: Optional[float] = 0.0
     dynatemp_exponent: Optional[float] = 1.0
