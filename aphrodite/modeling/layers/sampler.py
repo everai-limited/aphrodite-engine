@@ -651,7 +651,7 @@ def _apply_dry(
         last_token = input_ids_row[-1].item()
 
         # Skip if last token is a sequence breaker
-        if last_token in sequence_breakers_ids:
+        if last_token in sequence_breakers_ids[i]:
             continue
 
         # Find matches of the last token, excluding the last position
